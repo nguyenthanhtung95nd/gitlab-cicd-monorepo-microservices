@@ -1,0 +1,204 @@
+============= Core Concepts of GitLab CI and CD ==========
+1. Jobs
+- Jobs ảare the most fundamental building block of a .gitlab-ci.yml
+- Basic building block of pipelines
+- You can define arbitrary names for yourr jobs
+- Job name limitations, you can't use these keywords as job names:
++ image
++ servicees
++ stages
++ types
++ before_script
++ after_script
++ variables
++ cache
++ include
++ true
++ false
++ nil
+
+- Must contain at least the script clause
+- script specifies the commands to excute
+
+2. before_script
+- Commands that should run before script command
+3. after_script
+- Define commands that run after each job, including failed jobs
+4. .gitlab-ci.yml
+- Add file in the root of your repository
+- GitLab detects the file and runs the scripts defined in the jobs
+
+5. Pipeline
+- The top-level component of continuous integration, delivery and deployment
+
+6. Stages
+- You can group multiple jobs into stages that run in a defined order
+- Only if all jobs in a stage succeed, the pipeline moves on to the next stage
+- If any job in a stage fails, thee next stage is not excuted and the pipeline ends
+
+7. "needs"
+- Job keyword to define dependency relationships between the jobs
+
+8. script
+- Specify commands to excute
+- E.g. OS commands, like Linux commands
+
+9. "only" / "except"
+- Job keywords to control when jobs are excuted
+- "only" define when a job runs
+- "except" define when a job does not run
+
+10. "workfflow" / "workfflow:rules"
+- A global keyword, which configures the whole pipeline's behavior
+- Controls whether orr not the whole pipleline is created
+- "rules" can also be used on the job level as a replacement for only/except
+
+11. Enviroment Variables
+- In every pipeline GitLab provides predefined variables
+- List of predefined variables in GitLab docs avaiable
+
+12. Variable definitions
+- Define variable in a job, only that job can use it
+- Define variable at tob level of the file, globally avaiable and all jobs can use it
+
+=============== GitLab Runner ======
+1. GitLab Runner
+- GitLab Runner are agents that run your CI/CD jobs
+- GitLab Runner assigns these jobs to avaiable Runners
+- Program that you should install on a machine, that's separate from the one that hosts the GitLab instance
+- The provided runners by GitLab are instance runners
+- Instance runners are avaiable to all projects in a GitLab instance
+- Instance runners on gitlab.com are avaiable to all users on the platform
+
+2. Shell Executor
+- Command excuted on operating system
+- On the shell of the server, where Gitlab Runner is installed
+- All required programs for excuting the jobs, need to be installed manually
+- If we want to run docker command, docker needs to be install first
+
+3. Docker Executor
+- Commands are executed inside a container
+- Jobs run on user provided Docker images
+- Each job runs in a separate and insolated container
+- All tools need can be put in the Docker image
+- You only need to install Docker itself
+- Becausee of isolation, no version conflicts
+- Clean state for each job 
+
+4. Kubernetes Executor
+- Allows you to use an existing Kubernetes cluster for your builds
+- Utilize your high avaiablilty setup
+- Kubernetes Executor will create a new Pod for each GitLab job
+
+5. Docker Machine Executor
+- Special version of the Docker executor
+- Supports auto-scaling
+- Let's you create Docker hosts on your computer, on cloud providers on demand, dynamically
+- Creates servers, installs Docker on them and configures the client to talk to them
+- Docker Machine executor works like the normal Docker executor
+- GitLab-hosted runners are using Docker Machine executor
+
+6. Execution Flow
+- Runner requests new jobs from GitLab instancee (e.g GitLab.com)
+- Runner compiles and sends the jobs's payload to Executor
+- Executor clones sources or downloads artifacts from GitLab instance and executes the job
+- Exector returns job output and status to Runner
+- Runner updates job output and status to GitLab instance
+
+7. GitLab-hosted Runners
+- By default, GitLab uses one of its hosted runners to run your CI/CD jobs
+- These hosted runners are maintained by GitLab
+- Docker Machine Executors are used for them
+
+8. Project Runners
+- Runners that are associated with specific projects
+- Typically used for one project at a time
+
+9. Scope of Runners
+- Instance runners: avaiable to all groups and projects in a GitLab instance
+- Group runners: avaiable to all projects in a group
+- Project runners: associated with a specific project
+
+10. GitLab Container Registry
+- Every GitLab project can have its own space to store its Docker images
+- Your container registry can have multiple image repositories
+- Each image repository can store multiple image tag version (tags)
+
+11. Package registry
+- Use GitLab as a private or public registry for variety of supported package managers (Maven, npm, Nuget ...)
+
+12. Public vs Private Repositories
+By default, the Registry is visible to everyone with access to the project
+Public
+- Docker images stored in a public registry, can be used by everyone
+- E.g. on DockerHub images like Ubuntu, mongodb etc are publicly avaiable
+Private
+- Can only be accessed by logging into the Docker repository
+- E.g. for company internal Docker images 
+
+13. Dockerfile Syntax
+FROM = Specifies the parent image
+WORKDIR = Sets the working directory inside the container
+COPY <scr> <dest> = Copies files or directories from <src> and adds them to the filesystem of the container at the path <dest>
+RUN = Executes any command in the shell
+
+Noted: Docker compose, Why Docker Compose
+- Useful when you wnat to run multiple containers (my-app, database, authentication, billing ...)
+- Docker Compose is a tool to define and run multiple containers
+- Everything is defined in one YAML file
+- You can spin everything up and tear it all down with just a single command
+
+14. Masked variables
+- Variables containing secrets should always be masked
+- With this you avoid the risk of exposing the value of variable
+- E.g. when outputing it in a job log like "echo $VARIABLE"
+- By masking and hiding a variable, you can also remove the variable from CI/CD settigs too
+
+15. Enviroments and Deployments "environment"
+- Define the environment that a job deploys to, If no environment with name exists, a new one is created
+- Have this environment information in the pipeline
+- Have an overview of which version is deployd to which environment
+- Link directly to the deployment endpoint
+
+============= Optimize CI and CD Pipeline & Configure Multi-Stage Pipeline ===============
+1. Caching in GitLab CI/CD
+Case where you need to share files between jobs:
+Artifacts: 
+- Save artifacts generated by jobs to access them in GitLab UI after pipeline execution
+- Pass artifacts from one job to another (within  the Pipeline)
+- Job artifacts get uploaded and saved on the GitLab server
+- Use artifacts to pass intermediate build results between stages
+E.g: Job_A upload to Artifacts, Job_B download from Artifacts
+
+Cache:
+- Use cache for dependencies, like packages you download from the internet
+- Cache is stored on the GitLab Runner!
+- If jobs run on the same runner, they can re-use the local cache on the server
+
+Configure a Cache
+- Configure in the .gitlab-ci.yml file
+- Using "cache" attribute
+- You can define a cachee for each job
+Cache Key:
+- Give each cache a unique identifing key
+- If not set, the default key is "default"
+- All jobs that use the same cache key use the same cache
+Common Naming of Cache Keys
+- Use branch names the cache key (cache_main, cache_dev)
+- All the jobs that run for a specify brach, will share the same cache
+Cache Path
+- Used to choose which files or directories to cache
+- You can use an array of paths relative to the project directory
+Cache Policies
+pull-push
+- Job downloads the cache when the job starts & uploads changes to the cache when the job ends
+- The default policy
+pull
+- To only donwnload the cache, but never upload changes
+- Use when you have many jobs executing in parallel that use the same cache
+push
+- Common to have a job, which just builds the cache
+- Will only upload a cache, but never download
+Best practice:
+- Your job should never depend on a cache to be available
+- Caching is an optimization, but it isn't guranteed to always work
